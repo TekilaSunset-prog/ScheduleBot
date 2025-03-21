@@ -9,3 +9,22 @@ def add_button_type(income_=False):
         return InlineKeyboardMarkup(inline_keyboard=[[interval], [days], [income]])
     else:
         return InlineKeyboardMarkup(inline_keyboard=[[interval], [days]])
+
+
+def add_button_days(delete=None):
+    mon = [InlineKeyboardButton(text='Пн', callback_data='day0')]
+    tues = [InlineKeyboardButton(text='Вт', callback_data='day1')]
+    wed = [InlineKeyboardButton(text='Ср', callback_data='day2')]
+    thur = [InlineKeyboardButton(text='Чт', callback_data='day3')]
+    frid = [InlineKeyboardButton(text='Пт', callback_data='day4')]
+    sat = [InlineKeyboardButton(text='Сб', callback_data='day5')]
+    sun = [InlineKeyboardButton(text='Вс', callback_data='day6')]
+    end = [InlineKeyboardButton(text='Готово', callback_data='dayend')]
+
+    sp = [mon, tues, wed, thur, frid, sat, sun, end]
+    if delete:
+        for i in delete:
+            sp.pop(i)
+    else:
+        sp.pop(7)
+    return InlineKeyboardMarkup(inline_keyboard=sp), delete

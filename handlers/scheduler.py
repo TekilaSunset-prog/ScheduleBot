@@ -4,12 +4,14 @@ from emoji import emojize
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from pyexpat.errors import messages
 
-from handlers.buttons import add_button_type
-from db.db_schedule import DB
+from handlers.buttons import add_button_type, add_button_days
+from DataBases.db import DB, ScheduleDB
 
 router = aiogram.Router()
 db = DB()
+schedule = ScheduleDB()
 
 
 class REM(StatesGroup):
@@ -20,16 +22,11 @@ class REM(StatesGroup):
 
 @router.message(Command('rem'))
 async def remember(message: aiogram.types.Message):
-    user = db.get_data(select='user_id', where=f'user_id like {message.from_user.id}')
-    if len(user) == 0:
-        count = 1
-    else:
-        last = user[len(user) - 1]
-        count = last[len(last) - 1]
+    count = schedule.count_rems(message.from_user.id)
     if count == 10:
         await message.answer(f'{emojize(':prohibited:')}Ошибка. Максимальное количество заметок - 10')
-
-    await message.answer('Какой тип должен быть у напоминания?', reply_markup=add_button_type(True))
+    else:
+        await message.answer('Какой тип должен быть у напоминания?', reply_markup=add_button_type(True))
 
 
 @router.callback_query(lambda x: x.data == 'income')
@@ -37,10 +34,32 @@ async def income(callback: aiogram.types.CallbackQuery):
     await callback.message.edit_text('Интервальный - Напоминание будет приходить раз в то количество дней, сколько будет указано\n\nПо дням недели - Напоминание приходит в указанные дни недели', reply_markup=add_button_type())
 
 
+@router.callback_query(lambda x: x.data == 'days')
+async def days(callback: aiogram.types.CallbackQuery, state: FSMContext):
+    await callback.message.answer('Выберите дни в которых вам должно приходить напоминание', reply_markup=add_button_days()[0])
+    await state.update_data(type='days')
+
+
+@router.callback_query(lambda x: 'day' in x.data)
+async def days1(callback: aiogram.types.CallbackQuery, state: FSMContext):
+    if callback.data == 'dayend':
+        pass
+    else:
+        count = schedule.count_rems(callback.message.from_user.id)
+        data = db.get_data(select='days', where=f'user_id == {callback.message.from_user.id}:{count + 1}')
+
+        if not data:
+            db.add_data((f'{callback.message.from_user.id}:{count + 1}', f'[{callback.data[3]}]', None, None, 'for days'))
+        else:
+            sp = eval(data)
+            sp.append(f'[{callback.data[3]}')
+
+
 @router.callback_query(lambda x: x.data == 'interval')
 async def interval(callback: aiogram.types.CallbackQuery, state: FSMContext):
     await callback.message.answer('Введите количество дней, которое должно проходить между напоминаниями. Введите cancel, чтобы отменить создание заметки')
     await state.set_state(REM.days)
+    await state.update_data(type='interval')
 
 
 @router.message(REM.days)
@@ -117,7 +136,7 @@ async def text_(message: aiogram.types.Message, state: FSMContext):
             await state.update_data(text_=text)
             data = await state.get_data()
             await state.clear()
-
+            data.update({'type': 'interval'})
             db.add_data(tuple(data.values()))
 
             await message.answer(f'{emojize(':check_mark:')}Готово. Теперь вам будут приходить напоминания в нужное время')
