@@ -4,7 +4,6 @@ from emoji import emojize
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from pyexpat.errors import messages
 
 from handlers.buttons import add_button_type, add_button_days
 from DataBases.db import DB, ScheduleDB
@@ -18,13 +17,14 @@ class REM(StatesGroup):
     time = State()
     days = State()
     text_ = State()
+    type = State()
 
 
 @router.message(Command('rem'))
 async def remember(message: aiogram.types.Message):
     count = schedule.count_rems(message.from_user.id)
     if count == 10:
-        await message.answer(f'{emojize(':prohibited:')}Ошибка. Максимальное количество заметок - 10')
+        await message.answer(f'{emojize(":prohibited:")}Ошибка. Максимальное количество заметок - 10')
     else:
         await message.answer('Какой тип должен быть у напоминания?', reply_markup=add_button_type(True))
 
@@ -36,23 +36,35 @@ async def income(callback: aiogram.types.CallbackQuery):
 
 @router.callback_query(lambda x: x.data == 'days')
 async def days(callback: aiogram.types.CallbackQuery, state: FSMContext):
-    await callback.message.answer('Выберите дни в которых вам должно приходить напоминание', reply_markup=add_button_days()[0])
+    await callback.message.answer('Выберите дни в которых вам должно приходить напоминание', reply_markup=add_button_days())
     await state.update_data(type='days')
 
 
 @router.callback_query(lambda x: 'day' in x.data)
 async def days1(callback: aiogram.types.CallbackQuery, state: FSMContext):
+    count = schedule.count_rems(callback.message.from_user.id)
     if callback.data == 'dayend':
-        pass
+        if not db.get_data(select='days', where=f'user_id == {callback.message.from_user.id}'):
+            await callback.answer(f'{emojize(":cross_mark:")}Ошибка. Вы не добавили ни одного дня')
+        else:
+            db.commit()
+            await callback.message.delete()
+            await callback.message.answer(
+                f'{emojize(":check_mark:")}Успешно. Теперь введите время в которое вам должно приходить напоминание. Формат - ЧЧ:MM. Введите cancel, чтобы отменить создание заметки')
+            await state.set_state(REM.time)
+
     else:
-        count = schedule.count_rems(callback.message.from_user.id)
-        data = db.get_data(select='days', where=f'user_id == {callback.message.from_user.id}:{count + 1}')
+        data = db.get_data(select='days', where=f'user_id = {callback.message.from_user.id}{count + 1}')
 
         if not data:
-            db.add_data((f'{callback.message.from_user.id}:{count + 1}', f'[{callback.data[3]}]', None, None, 'for days'))
+            db.add_data((f'{callback.message.from_user.id}', f'[{callback.data[3]}]', None, None, 'for days'))
         else:
             sp = eval(data)
-            sp.append(f'[{callback.data[3]}')
+            if f'{callback.data[3]}' in sp:
+                await callback.answer(f'{emojize(":cross_mark:")}Ошибка. Этот день уже добавлен')
+            else:
+                sp.append(f'{callback.data[3]}')
+
 
 
 @router.callback_query(lambda x: x.data == 'interval')
@@ -65,38 +77,38 @@ async def interval(callback: aiogram.types.CallbackQuery, state: FSMContext):
 @router.message(REM.days)
 async def days(message: aiogram.types.Message, state: FSMContext):
     if message.text.lower() == 'cancel':
-        await message.answer(f'{emojize(':no_entry:')}Отмена')
+        await message.answer(f'{emojize(":no_entry:")}Отмена')
         await state.clear()
     elif message.text[0] == '/':
-        await message.answer(f'{emojize(':cross_mark:')}Ошибка')
+        await message.answer(f'{emojize(":cross_mark:")}Ошибка')
         await state.clear()
     else:
         error = False
         try:
             if int(message.text) >= 365 or int(message.text) <= 0:
-                await message.answer(f'{emojize(':cross_mark:')}Ошибка. Минимальное количество дней- 1, Максимальное - 364')
+                await message.answer(f'{emojize(":cross_mark:")}Ошибка. Минимальное количество дней- 1, Максимальное - 364')
                 error = True
         except ValueError:
-            await message.answer(f'{emojize(':cross_mark:')}Ошибка. Вводите только число')
+            await message.answer(f'{emojize(":cross_mark:")}Ошибка. Вводите только число')
             error = True
 
         if not error:
             await state.update_data(days=message.text)
-            await message.answer(f'{emojize(':check_mark:')}Успешно. Теперь введите время в которое вам должно приходить напоминание. Формат - ЧЧ:MM. Введите cancel, чтобы отменить создание заметки')
+            await message.answer(f'{emojize(":check_mark:")}Успешно. Теперь введите время в которое вам должно приходить напоминание. Формат - ЧЧ:MM. Введите cancel, чтобы отменить создание заметки')
             await state.set_state(REM.time)
 
 
 @router.message(REM.time)
 async def time_(message: aiogram.types.Message, state: FSMContext):
     if message.text.lower() == 'cancel':
-        await message.answer(f'{emojize(':no_entry:')}Отмена')
+        await message.answer(f'{emojize(":no_entry:")}Отмена')
         await state.clear()
     elif message.text[0] == '/':
-        await message.answer(f'{emojize(':cross_mark:')}Ошибка')
+        await message.answer(f'{emojize(":cross_mark:")}Ошибка')
         await state.clear()
     else:
         error = False
-        err_text = f'{emojize(':cross_mark:')}Ошибка. Неправильный формат ввода'
+        err_text = f'{emojize(":cross_mark:")}Ошибка. Неправильный формат ввода'
         text = message.text
 
         try:
@@ -116,22 +128,22 @@ async def time_(message: aiogram.types.Message, state: FSMContext):
                 await message.answer(err_text)
             else:
                 await state.update_data(time=text)
-                await message.answer(f'{emojize(':check_mark:')}Успешно. Теперь введите текст напоминания (макс. 5000 символов). Введите cancel, чтобы отменить создание заметки')
+                await message.answer(f'{emojize(":check_mark:")}Успешно. Теперь введите текст напоминания (макс. 5000 символов). Введите cancel, чтобы отменить создание заметки')
                 await state.set_state(REM.text_)
 
 
 @router.message(REM.text_, aiogram.F.content_type == aiogram.types.ContentType.TEXT)
 async def text_(message: aiogram.types.Message, state: FSMContext):
     if message.text.lower() == 'cancel':
-        await message.answer(f'{emojize(':no_entry:')}Отмена')
+        await message.answer(f'{emojize(":no_entry:")}Отмена')
         await state.clear()
     elif message.text[0] == '/':
-        await message.answer(f'{emojize(':cross_mark:')}Ошибка')
+        await message.answer(f'{emojize(":cross_mark:")}Ошибка')
         await state.clear()
     else:
         text = message.text
         if len(text) > 5000:
-            await message.answer(f'{emojize(':cross_mark:')}Ошибка. Слишком много символов. Максимум 5000')
+            await message.answer(f'{emojize(":cross_mark:")}Ошибка. Слишком много символов. Максимум 5000')
         else:
             await state.update_data(text_=text)
             data = await state.get_data()
@@ -139,4 +151,4 @@ async def text_(message: aiogram.types.Message, state: FSMContext):
             data.update({'type': 'interval'})
             db.add_data(tuple(data.values()))
 
-            await message.answer(f'{emojize(':check_mark:')}Готово. Теперь вам будут приходить напоминания в нужное время')
+            await message.answer(f'{emojize(":check_mark:")}Готово. Теперь вам будут приходить напоминания в нужное время')

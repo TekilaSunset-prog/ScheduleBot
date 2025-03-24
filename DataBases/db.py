@@ -11,7 +11,7 @@ class DB:
         self.cur.execute(f'CREATE TABLE if not exists {name} {data}')
 
     def add_data(self, data):
-        self.cur.execute(f'insert into {self.name} values(?, ?, ?, ?)', data)
+        self.cur.execute(f'insert into {self.name} values(?, ?, ?, ?, ?)', data)
 
     def get_data(self, where, select='*'):
         if type(where) == bool:
@@ -33,11 +33,14 @@ class DB:
 
 
 class ScheduleDB(DB):
-    name = 'schedule'
-
     def count_rems(self, user_id):
         sp = super().get_data(f'user_id like {user_id}', select='user_id')
         if len(sp) == 0:
             return 0
         last = sp[len(sp) - 1]
         return last[len(last) - 1]
+
+
+db = DB()
+db.create('schedule', '(user_id text primary key, days text, time text, text text, type text)')
+db.commit()
