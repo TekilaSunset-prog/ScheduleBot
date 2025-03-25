@@ -35,12 +35,7 @@ class DB:
 class ScheduleDB(DB):
     def count_rems(self, user_id):
         sp = super().get_data(f'user_id like {user_id}', select='user_id')
-        if len(sp) == 0:
+        if not sp:
             return 0
         last = sp[len(sp) - 1]
         return last[len(last) - 1]
-
-
-db = DB()
-db.create('schedule', '(user_id text primary key, days text, time text, text text, type text)')
-db.commit()

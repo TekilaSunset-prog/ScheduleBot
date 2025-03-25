@@ -55,15 +55,16 @@ async def days1(callback: aiogram.types.CallbackQuery, state: FSMContext):
 
     else:
         data = db.get_data(select='days', where=f'user_id = {callback.message.from_user.id}{count + 1}')
-
         if not data:
-            db.add_data((f'{callback.message.from_user.id}', f'[{callback.data[3]}]', None, None, 'for days'))
+            db.add_data((f'{callback.message.from_user.id}{count + 1}', f'[{callback.data[3]}]', None, None, 'for days'))
+            db.commit()
         else:
             sp = eval(data)
             if f'{callback.data[3]}' in sp:
                 await callback.answer(f'{emojize(":cross_mark:")}Ошибка. Этот день уже добавлен')
             else:
                 sp.append(f'{callback.data[3]}')
+
 
 
 
