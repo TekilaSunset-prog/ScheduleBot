@@ -6,27 +6,31 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from handlers.buttons import add_button_type, add_button_days
-from DataBases.db import DB, ScheduleDB
+from DataBases.db import DB
 
 router = aiogram.Router()
-db = DB()
-schedule = ScheduleDB()
-
+ScheduleDb = DB()
+UsersDb = DB(table='users', count=2)
 
 class REM(StatesGroup):
     time = State()
     days = State()
     text_ = State()
     type = State()
+    count = State()
 
 
 @router.message(Command('rem'))
-async def remember(message: aiogram.types.Message):
-    count = schedule.count_rems(message.from_user.id)
-    if count == 10:
+async def remember(message: aiogram.types.Message, state: FSMContext):
+    count = UsersDb.get_data(f'user_id = {message.from_user.id}', select='count')
+    if not count:
+        UsersDb.add_data((message.from_user.id, 1))
+    if 10 in count:
         await message.answer(f'{emojize(":prohibited:")}Ошибка. Максимальное количество заметок - 10')
+        UsersDb.add_data((message.from_user.id, max(count) + 1))
     else:
         await message.answer('Какой тип должен быть у напоминания?', reply_markup=add_button_type(True))
+    await state.update_data(count=count+1)
 
 
 @router.callback_query(lambda x: x.data == 'income')
@@ -42,29 +46,17 @@ async def days(callback: aiogram.types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(lambda x: 'day' in x.data)
 async def days1(callback: aiogram.types.CallbackQuery, state: FSMContext):
-    count = schedule.count_rems(callback.message.from_user.id)
+    count = state.get_value('count')
     if callback.data == 'dayend':
-        if not db.get_data(select='days', where=f'user_id == {callback.message.from_user.id}'):
+        if not ScheduleDb.get_data(select='days', where=f'user_id = {callback.message.from_user.id}')[count - 1]:
+
             await callback.answer(f'{emojize(":cross_mark:")}Ошибка. Вы не добавили ни одного дня')
+
         else:
-            db.commit()
             await callback.message.delete()
             await callback.message.answer(
                 f'{emojize(":check_mark:")}Успешно. Теперь введите время в которое вам должно приходить напоминание. Формат - ЧЧ:MM. Введите cancel, чтобы отменить создание заметки')
             await state.set_state(REM.time)
-
-    else:
-        data = db.get_data(select='days', where=f'user_id = {callback.message.from_user.id}{count + 1}')
-        if not data:
-            db.add_data((f'{callback.message.from_user.id}{count + 1}', f'[{callback.data[3]}]', None, None, 'for days'))
-            db.commit()
-        else:
-            sp = eval(data)
-            if f'{callback.data[3]}' in sp:
-                await callback.answer(f'{emojize(":cross_mark:")}Ошибка. Этот день уже добавлен')
-            else:
-                sp.append(f'{callback.data[3]}')
-
 
 
 
@@ -150,6 +142,6 @@ async def text_(message: aiogram.types.Message, state: FSMContext):
             data = await state.get_data()
             await state.clear()
             data.update({'type': 'interval'})
-            db.add_data(tuple(data.values()))
+            ScheduleDb.add_data(tuple(data.values()))
 
             await message.answer(f'{emojize(":check_mark:")}Готово. Теперь вам будут приходить напоминания в нужное время')
