@@ -13,8 +13,9 @@ ScheduleDb = DB()
 UsersDb = DB(table='users', count=2)
 
 class REM(StatesGroup):
-    time = State()
+    user_id = State()
     days = State()
+    time = State()
     text_ = State()
     type = State()
     count = State()
@@ -22,15 +23,20 @@ class REM(StatesGroup):
 
 @router.message(Command('rem'))
 async def remember(message: aiogram.types.Message, state: FSMContext):
-    count = UsersDb.get_data(f'user_id = {message.from_user.id}', select='count')
-    if not count:
-        UsersDb.add_data((message.from_user.id, 1))
-    if 10 in count:
+    user_id = message.from_user.id
+    count = UsersDb.get_data(f'user_id = {user_id}', select='count', al=False)
+    if count is None:
+        count = 0
+        UsersDb.add_data((user_id, count))
+    else:
+        count = count[0]
+
+    if count == 10:
         await message.answer(f'{emojize(":prohibited:")}Ошибка. Максимальное количество заметок - 10')
-        UsersDb.add_data((message.from_user.id, max(count) + 1))
     else:
         await message.answer('Какой тип должен быть у напоминания?', reply_markup=add_button_type(True))
-    await state.update_data(count=count+1)
+        await state.update_data(count=count + 1)
+        await state.update_data(user_id=user_id)
 
 
 @router.callback_query(lambda x: x.data == 'income')
@@ -39,36 +45,55 @@ async def income(callback: aiogram.types.CallbackQuery):
 
 
 @router.callback_query(lambda x: x.data == 'days')
-async def days(callback: aiogram.types.CallbackQuery, state: FSMContext):
+async def days1(callback: aiogram.types.CallbackQuery, state: FSMContext):
     await callback.message.answer('Выберите дни в которых вам должно приходить напоминание', reply_markup=add_button_days())
+    await callback.message.delete()
     await state.update_data(type='days')
 
 
 @router.callback_query(lambda x: 'day' in x.data)
-async def days1(callback: aiogram.types.CallbackQuery, state: FSMContext):
-    count = state.get_value('count')
+async def days2(callback: aiogram.types.CallbackQuery, state: FSMContext):
+    days = await state.get_value('days')
+    if days is None:
+        days = ''
+    if callback.data == 'daycan':
+        await callback.message.delete()
+        await callback.message.answer(f'{emojize(":no_entry:")}Отмена')
+        await state.clear()
+
     if callback.data == 'dayend':
-        if not ScheduleDb.get_data(select='days', where=f'user_id = {callback.message.from_user.id}')[count - 1]:
-
+        if days is None:
             await callback.answer(f'{emojize(":cross_mark:")}Ошибка. Вы не добавили ни одного дня')
-
         else:
             await callback.message.delete()
             await callback.message.answer(
-                f'{emojize(":check_mark:")}Успешно. Теперь введите время в которое вам должно приходить напоминание. Формат - ЧЧ:MM. Введите cancel, чтобы отменить создание заметки')
+                f'{emojize(":check_mark:")}Успешно.\nТеперь введите время в которое вам должно приходить напоминание. Формат - ЧЧ:MM.\nВведите cancel, чтобы отменить создание заметки')
             await state.set_state(REM.time)
-
+    else:
+        day = callback.data.replace('day', '')
+        if day not in days:
+            days += day
+            await callback.answer(f'{emojize(":check_mark:")}Успешно')
+            await state.update_data(days=days)
+        elif day in days:
+            await callback.answer(f'{emojize(":cross_mark:")}Ошибка. Этот день уже добавлен')
+        if len(days) == 7:
+            await callback.message.delete()
+            await callback.message.answer(
+                f'{emojize(":check_mark:")}Успешно.\nТеперь введите время в которое вам должно приходить напоминание. Формат - ЧЧ:MM.\nВведите cancel, чтобы отменить создание заметки')
+            await state.set_state(REM.time)
 
 
 @router.callback_query(lambda x: x.data == 'interval')
 async def interval(callback: aiogram.types.CallbackQuery, state: FSMContext):
-    await callback.message.answer('Введите количество дней, которое должно проходить между напоминаниями. Введите cancel, чтобы отменить создание заметки')
+    await callback.message.answer('Введите количество дней, которое должно проходить между напоминаниями.\nВведите cancel, чтобы отменить создание заметки')
+    await callback.message.delete()
     await state.set_state(REM.days)
     await state.update_data(type='interval')
 
 
 @router.message(REM.days)
-async def days(message: aiogram.types.Message, state: FSMContext):
+async def days3(message: aiogram.types.Message, state: FSMContext):
     if message.text.lower() == 'cancel':
         await message.answer(f'{emojize(":no_entry:")}Отмена')
         await state.clear()
@@ -87,7 +112,7 @@ async def days(message: aiogram.types.Message, state: FSMContext):
 
         if not error:
             await state.update_data(days=message.text)
-            await message.answer(f'{emojize(":check_mark:")}Успешно. Теперь введите время в которое вам должно приходить напоминание. Формат - ЧЧ:MM. Введите cancel, чтобы отменить создание заметки')
+            await message.answer(f'{emojize(":check_mark:")}Успешно.\nТеперь введите время (по МСК) в которое вам должно приходить напоминание. Формат - ЧЧ:MM.\nВведите cancel, чтобы отменить создание заметки')
             await state.set_state(REM.time)
 
 
@@ -121,7 +146,7 @@ async def time_(message: aiogram.types.Message, state: FSMContext):
                 await message.answer(err_text)
             else:
                 await state.update_data(time=text)
-                await message.answer(f'{emojize(":check_mark:")}Успешно. Теперь введите текст напоминания (макс. 5000 символов). Введите cancel, чтобы отменить создание заметки')
+                await message.answer(f'{emojize(":check_mark:")}Успешно.\nТеперь введите текст напоминания (макс. 5000 символов).\nВведите cancel, чтобы отменить создание заметки')
                 await state.set_state(REM.text_)
 
 
@@ -140,8 +165,10 @@ async def text_(message: aiogram.types.Message, state: FSMContext):
         else:
             await state.update_data(text_=text)
             data = await state.get_data()
+            count = await state.get_value('count')
             await state.clear()
-            data.update({'type': 'interval'})
-            ScheduleDb.add_data(tuple(data.values()))
+
+            UsersDb.update_db(f'count = {count}', f'user_id = {message.from_user.id}')
+            ScheduleDb.add_data(tuple(data.values()), queue=tuple(data.keys()))
 
             await message.answer(f'{emojize(":check_mark:")}Готово. Теперь вам будут приходить напоминания в нужное время')

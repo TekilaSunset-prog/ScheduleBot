@@ -20,6 +20,6 @@ def add_button_days():
     sat = [InlineKeyboardButton(text='Сб', callback_data='day5')]
     sun = [InlineKeyboardButton(text='Вс', callback_data='day6')]
     end = [InlineKeyboardButton(text='Завершить', callback_data='dayend')]
+    cancel = [InlineKeyboardButton(text='Отмена', callback_data='daycan')]
 
-    sp = [mon, tues, wed, thur, frid, sat, sun, end]
-    return InlineKeyboardMarkup(inline_keyboard=sp)
+    return InlineKeyboardMarkup(inline_keyboard=[mon, tues, wed, thur, frid, sat, sun, end, cancel])
