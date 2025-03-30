@@ -6,9 +6,9 @@ def add_button_type(income_=False):
     days = InlineKeyboardButton(text='По дням недели', callback_data='days')
     income = InlineKeyboardButton(text=f'Справка' + emojize(':open_book:'), callback_data='income')
     if income_:
-        return InlineKeyboardMarkup(inline_keyboard=[[interval], [days], [income]])
+        return InlineKeyboardMarkup(inline_keyboard=[[interval], [days], [income], [InlineKeyboardButton(text='Отмена⛔', callback_data='cancel')]])
     else:
-        return InlineKeyboardMarkup(inline_keyboard=[[interval], [days]])
+        return InlineKeyboardMarkup(inline_keyboard=[[interval], [days], [InlineKeyboardButton(text='Отмена⛔', callback_data='cancel')]])
 
 
 def add_button_days():
@@ -20,6 +20,10 @@ def add_button_days():
     sat = [InlineKeyboardButton(text='Сб', callback_data='day5')]
     sun = [InlineKeyboardButton(text='Вс', callback_data='day6')]
     end = [InlineKeyboardButton(text='Завершить', callback_data='dayend')]
-    cancel = [InlineKeyboardButton(text='Отмена', callback_data='daycan')]
+    cancel = [InlineKeyboardButton(text='Отмена⛔', callback_data='cancel')]
 
     return InlineKeyboardMarkup(inline_keyboard=[mon, tues, wed, thur, frid, sat, sun, end, cancel])
+
+
+def add_button_cancel():
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Отмена⛔', callback_data='cancel')]])

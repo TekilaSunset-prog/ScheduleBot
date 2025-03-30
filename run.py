@@ -4,7 +4,7 @@ import logging
 from aiogram import Dispatcher, Bot
 
 from jsons.jsfiles import get_param
-from handlers.scheduler import router
+from handlers.scheduler.writing import router
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=get_param('Token'))

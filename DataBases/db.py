@@ -2,7 +2,7 @@ import sqlite3
 
 
 class DB:
-    def __init__(self, name='C:/Users\Ученик/PycharmProjects/ScheduleBot/DataBases/schedule.db', table='schedule', count=6):
+    def __init__(self, name='C:/Users/nam1k/PycharmProjects/ScheduleBot/DataBases/schedule.db', table='schedule', count=6):
         self.conn = sqlite3.connect(name)
         self.cur = self.conn.cursor()
         self.table = table
