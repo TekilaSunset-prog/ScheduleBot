@@ -5,10 +5,10 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from handlers.scheduler.buttons import add_button_type, add_button_days, add_button_cancel, add_button_one, add_button_list
+from handlers.scheduler.buttons import add_button_type, add_button_days, add_button_cancel, add_button_one
 from DataBases.db import DB
 
-router = aiogram.Router()
+router_w = aiogram.Router()
 ScheduleDb = DB()
 UsersDb = DB(table='users', count=2)
 
@@ -24,7 +24,7 @@ class REM(StatesGroup):
     count = State()
 
 
-@router.message(Command('create'))
+@router_w.message(Command('create'))
 async def remember(message: aiogram.types.Message, state: FSMContext):
     user_id = message.from_user.id
     count = UsersDb.get_data(f'user_id = {user_id}', select='count', al=False)
@@ -43,7 +43,7 @@ async def remember(message: aiogram.types.Message, state: FSMContext):
         await state.set_state(REM.name)
 
 
-@router.message(REM.name, aiogram.F.content_type == aiogram.types.ContentType.TEXT)
+@router_w.message(REM.name, aiogram.F.content_type == aiogram.types.ContentType.TEXT)
 async def name(message: aiogram.types.Message, state: FSMContext):
     if message.text[0] == '/':
         await message.answer(f'{emojize(":cross_mark:")}Ошибка')
@@ -53,14 +53,14 @@ async def name(message: aiogram.types.Message, state: FSMContext):
         await message.answer(f'{emojize(":check_mark:")}Успешно.\nКакого типа должна быть заметка?', reply_markup=add_button_type(True))
 
 
-@router.callback_query(lambda x: x.data == 'income')
+@router_w.callback_query(lambda x: x.data == 'income')
 async def income(callback: aiogram.types.CallbackQuery):
     await callback.message.edit_text(
         'Интервальная - Напоминание будет приходить раз в то количество дней, сколько будет указано\n\nПо дням недели - Напоминание приходит в указанные дни недели',
         reply_markup=add_button_type())
 
 
-@router.callback_query(lambda x: x.data == 'days')
+@router_w.callback_query(lambda x: x.data == 'days')
 async def days1(callback: aiogram.types.CallbackQuery, state: FSMContext):
     await callback.message.answer('Выберите дни в которых вам должно приходить напоминание',
                                   reply_markup=add_button_days())
@@ -68,7 +68,7 @@ async def days1(callback: aiogram.types.CallbackQuery, state: FSMContext):
     await state.update_data(type='days')
 
 
-@router.callback_query(lambda x: 'day' in x.data)
+@router_w.callback_query(lambda x: 'day' in x.data)
 async def days2(callback: aiogram.types.CallbackQuery, state: FSMContext):
     days = await state.get_value('days')
     if days is None:
@@ -99,7 +99,7 @@ async def days2(callback: aiogram.types.CallbackQuery, state: FSMContext):
             await state.set_state(REM.time)
 
 
-@router.callback_query(lambda x: x.data == 'interval')
+@router_w.callback_query(lambda x: x.data == 'interval')
 async def interval(callback: aiogram.types.CallbackQuery, state: FSMContext):
     await callback.message.answer('Введите количество дней, которое должно проходить между напоминаниями.\n',
                                   reply_markup=add_button_cancel())
@@ -108,7 +108,7 @@ async def interval(callback: aiogram.types.CallbackQuery, state: FSMContext):
     await state.update_data(type='interval')
 
 
-@router.message(REM.days)
+@router_w.message(REM.days)
 async def days3(message: aiogram.types.Message, state: FSMContext):
     if message.text[0] == '/':
         await message.answer(f'{emojize(":cross_mark:")}Ошибка')
@@ -134,7 +134,7 @@ async def days3(message: aiogram.types.Message, state: FSMContext):
             await state.set_state(REM.time)
 
 
-@router.message(REM.time)
+@router_w.message(REM.time)
 async def time_(message: aiogram.types.Message, state: FSMContext):
     if message.text[0] == '/':
         await message.answer(f'{emojize(":cross_mark:")}Ошибка')
@@ -164,7 +164,7 @@ async def time_(message: aiogram.types.Message, state: FSMContext):
                 await message.answer(f'{emojize(":check_mark:")}Успешно.\nКакой должна быть заметка?', reply_markup=add_button_one())
 
 
-@router.callback_query(lambda x: 'one' in x.data)
+@router_w.callback_query(lambda x: 'one' in x.data)
 async def one(callback: aiogram.types.CallbackQuery, state: FSMContext):
     days = await state.get_value('days')
     days += callback.data.replace('one', '')
@@ -176,7 +176,7 @@ async def one(callback: aiogram.types.CallbackQuery, state: FSMContext):
     await state.set_state(REM.text_)
 
 
-@router.message(REM.text_, aiogram.F.content_type == aiogram.types.ContentType.TEXT)
+@router_w.message(REM.text_, aiogram.F.content_type == aiogram.types.ContentType.TEXT)
 async def text_(message: aiogram.types.Message, state: FSMContext):
     if message.text[0] == '/':
         await message.answer(f'{emojize(":cross_mark:")}Ошибка')
@@ -199,27 +199,8 @@ async def text_(message: aiogram.types.Message, state: FSMContext):
                 f'{emojize(":check_mark:")}Готово. Теперь вам будут приходить напоминания в нужное время')
 
 
-@router.callback_query(lambda x: x.data == 'cancel')
+@router_w.callback_query(lambda x: x.data == 'cancel')
 async def cancel(callback: aiogram.types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await callback.message.answer('⛔Создание заметки отменено')
     await state.clear()
-
-
-@router.message(Command('list'))
-async def lists(message: aiogram.types.Message):
-    user_id = message.from_user.id
-    data = ScheduleDb.get_data(f'user_id = {user_id}')
-    if not data:
-        await message.answer('У вас ни одной заметки')
-    else:
-        sp = []
-        for i in data:
-            sp.append(i[1])
-        await message.answer('Выберите заметку', reply_markup=add_button_list(sp))
-
-
-@router.callback_query(lambda x: 'list' in x.data)
-async def output(callback: aiogram.types.CallbackQuery):
-    data = ScheduleDb.get_data(f'user_id = {callback.message.from_user.id} and name = "{callback.data.replace("list", "")}"', select='days, time, type, text_', al=False)
-    print(data)

@@ -41,5 +41,10 @@ def add_button_list(data):
 
     for i in data:
         sp.append(InlineKeyboardButton(text=i, callback_data=f'list{i}'))
-
     return InlineKeyboardMarkup(inline_keyboard=[sp])
+
+
+def add_button_output():
+
+    delete = [InlineKeyboardButton(text='Удалить заметку')]
+
