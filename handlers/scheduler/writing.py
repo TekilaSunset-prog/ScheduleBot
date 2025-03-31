@@ -221,5 +221,5 @@ async def lists(message: aiogram.types.Message):
 
 @router.callback_query(lambda x: 'list' in x.data)
 async def output(callback: aiogram.types.CallbackQuery):
-    data = ScheduleDb.get_data(f'user_id = {callback.message.from_user.id} and name = {callback.data.replace("list", "")}', select='days, time, type, text_', al=False)
+    data = ScheduleDb.get_data(f'user_id = {callback.message.from_user.id} and name = "{callback.data.replace("list", "")}"', select='days, time, type, text_', al=False)
     print(data)
