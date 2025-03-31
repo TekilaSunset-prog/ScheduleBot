@@ -1,8 +1,15 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from emoji import emojize
 
+
+def add_button_one():
+    one = [InlineKeyboardButton(text='Одноразовая', callback_data='one:0')]
+    many = [InlineKeyboardButton(text='Многоразовая', callback_data='one:1')]
+    return InlineKeyboardMarkup(inline_keyboard=[one, many])
+
+
 def add_button_type(income_=False):
-    interval = InlineKeyboardButton(text='Интервальный', callback_data='interval')
+    interval = InlineKeyboardButton(text='Интервальная', callback_data='interval')
     days = InlineKeyboardButton(text='По дням недели', callback_data='days')
     income = InlineKeyboardButton(text=f'Справка' + emojize(':open_book:'), callback_data='income')
     if income_:
@@ -27,3 +34,12 @@ def add_button_days():
 
 def add_button_cancel():
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Отмена⛔', callback_data='cancel')]])
+
+
+def add_button_list(data):
+    sp = []
+
+    for i in data:
+        sp.append(InlineKeyboardButton(text=i, callback_data=f'list{i}'))
+
+    return InlineKeyboardMarkup(inline_keyboard=[sp])
