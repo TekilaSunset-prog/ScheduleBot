@@ -218,10 +218,9 @@ async def text_(message: aiogram.types.Message, state: FSMContext):
 
 @router_w.callback_query(lambda x: 'cancel' in x.data)
 async def cancel(callback: aiogram.types.CallbackQuery, state: FSMContext):
-    await callback.message.delete()
     data = await state.get_data()
     if not data or str(data.get('count')) != callback.data[6]:
-        await callback.message.answer('Заметка уже создана /list')
+        await callback.message.edit_text('Заметка уже создана /list')
     else:
-        await callback.message.answer('Создание заметки отменено⛔')
+        await callback.message.edit_text('Создание заметки отменено⛔')
         await state.clear()

@@ -2,16 +2,25 @@ import aiogram
 
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 
 from emoji import emojize
 
-from handlers.data.buttons import add_button_list, add_button_output, add_button_sure
+from handlers.data.buttons import add_button_list, add_button_output, add_button_sure, add_button_redact, add_button_cancel
 from handlers.data.writing import ScheduleDb, UsersDb, REM
 
 router_out = aiogram.Router()
 
 
-# Редактирование данных пользователем
+class Redact(StatesGroup):
+    red_name = State()
+    red_days = State()
+    red_time = State()
+    red_text = State()
+    count = State()
+
+
+# Вывод данных пользователю
 @router_out.message(Command('list'))
 async def lists(message: aiogram.types.Message):
     user_id = message.from_user.id
@@ -78,11 +87,27 @@ async def sp_(callback: aiogram.types.CallbackQuery):
     await callback.message.edit_text('Выберите заметку', reply_markup=add_button_list(sp))
 
 
+# Редактирование данных
 @router_out.callback_query(lambda x: 'redact' in x.data)
 async def redact(callback: aiogram.types.CallbackQuery):
-    pass
+    data = ScheduleDb.get_data(where=f'user_id = {callback.message.chat.id} and count = {callback.data[6]}', select='name, days, time, type, text', al=False)
+    await callback.message.edit_text('Какой параметр вы хотите отредактировать?', reply_markup=add_button_redact(data, callback.data[6]))
 
 
+@router_out.callback_query(lambda x: 'name' in x.data)
+async def redact_name(callback: aiogram.types.CallbackQuery, state: FSMContext):
+    data = callback.data.replace('name', '')
+    await callback.message.delete()
+    await state.set_state(Redact.red_name)
+    await callback.message.answer('Введите новое название', reply_markup=add_button_cancel(data[0], 'red'))
+
+
+@router_out.message(Redact.red_name, aiogram.F.content_type == aiogram.types.ContentType.TEXT)
+async def redact_name1(message: aiogram.types.Message, state: FSMContext):
+    ScheduleDb.update_db(f'text_ = {message.text}', f'user_id = {message.from_user.id} and count = ')
+
+
+# Удаление данных
 @router_out.callback_query(lambda x: 'del' in x.data)
 async def delete(callback: aiogram.types.CallbackQuery):
     await callback.message.delete()
@@ -128,3 +153,9 @@ async def create(callback: aiogram.types.CallbackQuery, state: FSMContext):
         await state.update_data(count=count + 1)
         await state.update_data(user_id=user_id)
         await state.set_state(REM.name)
+
+
+@router_out.callback_query(lambda x: 'cancelred' in x.data)
+async def cancelred(callback: aiogram.types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.edit_text('Редактирование заметки отменено⛔')
