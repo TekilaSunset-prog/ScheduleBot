@@ -2,24 +2,24 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from emoji import emojize
 
 
-def add_button_one():
+def add_button_one(count):
     one = [InlineKeyboardButton(text='Одноразовая', callback_data='one:0')]
     many = [InlineKeyboardButton(text='Многоразовая', callback_data='one:1')]
 
     return InlineKeyboardMarkup(inline_keyboard=[one, many, [InlineKeyboardButton(text='Отмена⛔', callback_data='cancel')]])
 
 
-def add_button_type(income_=False):
+def add_button_type(count, income_=False):
     interval = InlineKeyboardButton(text='Интервальная', callback_data='interval')
     days = InlineKeyboardButton(text='По дням недели', callback_data='days')
     income = InlineKeyboardButton(text=f'Справка' + emojize(':open_book:'), callback_data='income')
     if income_:
-        return InlineKeyboardMarkup(inline_keyboard=[[interval], [days], [income], [InlineKeyboardButton(text='Отмена⛔', callback_data='cancel')]])
+        return InlineKeyboardMarkup(inline_keyboard=[[interval], [days], [income], [InlineKeyboardButton(text='Отмена⛔', callback_data=f'cancel{count}')]])
     else:
-        return InlineKeyboardMarkup(inline_keyboard=[[interval], [days], [InlineKeyboardButton(text='Отмена⛔', callback_data='cancel')]])
+        return InlineKeyboardMarkup(inline_keyboard=[[interval], [days], [InlineKeyboardButton(text='Отмена⛔', callback_data=f'cancel{count}')]])
 
 
-def add_button_days():
+def add_button_days(count):
     mon = [InlineKeyboardButton(text='Пн', callback_data='day0')]
     tues = [InlineKeyboardButton(text='Вт', callback_data='day1')]
     wed = [InlineKeyboardButton(text='Ср', callback_data='day2')]
@@ -28,22 +28,22 @@ def add_button_days():
     sat = [InlineKeyboardButton(text='Сб', callback_data='day5')]
     sun = [InlineKeyboardButton(text='Вс', callback_data='day6')]
     end = [InlineKeyboardButton(text='Завершить', callback_data='dayend')]
-    cancel = [InlineKeyboardButton(text='Отмена⛔', callback_data='cancel')]
+    cancel = [InlineKeyboardButton(text='Отмена⛔', callback_data=f'cancel{count}')]
 
     return InlineKeyboardMarkup(inline_keyboard=[mon, tues, wed, thur, frid, sat, sun, end, cancel])
 
 
-def add_button_cancel():
-    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Отмена⛔', callback_data='cancel')]])
+def add_button_cancel(count):
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Отмена⛔', callback_data=f'cancel{count}')]])
 
 
 def add_button_list(data):
     if not data:
-        return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=f'Заметки кончились{emojize(':loudly_crying_face:')}')]])
+        return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=f'Заметки кончились{emojize(":loudly_crying_face:")}', callback_data='create')]])
     sp = []
 
-    for i in data:
-        sp.append([InlineKeyboardButton(text=i, callback_data=f'list{i}')])
+    for i in range(len(data)):
+        sp.append([InlineKeyboardButton(text=data[i], callback_data=f'list{i}')])
     return InlineKeyboardMarkup(inline_keyboard=sp)
 
 
