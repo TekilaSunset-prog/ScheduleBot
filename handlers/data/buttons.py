@@ -61,12 +61,14 @@ def add_button_sure(count):
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=emojize(":check_mark:"), callback_data=f'yes{count}')], [InlineKeyboardButton(text=emojize(":cross_mark:"), callback_data=f'no{count}')]])
 
 
-def add_button_redact(data, count):
-    name = InlineKeyboardButton(text='Отредактировать название', callback_data=f'name{data[0] + count}')
-    days = InlineKeyboardButton(text='Изменить дни', callback_data=f'days{data[1] + count}')
-    time = InlineKeyboardButton(text='Изменить время', callback_data=f'time{data[2] + count}')
-    type_ = InlineKeyboardButton(text='Поменять тип', callback_data=f'type{data[3] + count}')
-    text = InlineKeyboardButton(text='Изменить текст', callback_data=f'text{data[4] + count}')
+def add_button_redact(data=None, count=None, back_=False):
+    if back_:
+        return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='<<Вернуться к редактированию заметки', callback_data='backred')]])
+    name = InlineKeyboardButton(text='Название', callback_data=f'name{data[0] + count}')
+    days = InlineKeyboardButton(text='Дни', callback_data=f'days{data[1] + count}')
+    time = InlineKeyboardButton(text='Время', callback_data=f'time{data[2] + count}')
+    type_ = InlineKeyboardButton(text='Тип', callback_data=f'type{data[3] + count}')
+    text = InlineKeyboardButton(text='Текст', callback_data=f'text{data[4] + count}')
     back = InlineKeyboardButton(text='<<Вернуться к описанию', callback_data=f'back{count}')
 
     return InlineKeyboardMarkup(inline_keyboard=[[name], [days], [time], [type_], [text], [back]])

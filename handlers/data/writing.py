@@ -66,7 +66,7 @@ async def income(callback: aiogram.types.CallbackQuery, state: FSMContext):
 @router_w.callback_query(lambda x: x.data == 'days')
 async def days1(callback: aiogram.types.CallbackQuery, state: FSMContext):
     count = await state.get_value('count')
-    await callback.message.answer('Выберите дни в которых вам должно приходить напоминание',
+    await callback.message.answer('Выберите дни в которых вам должно приходить напоминание и нажмите на кнопку "завершить"',
                                   reply_markup=add_button_days(count))
     await callback.message.delete()
     await state.update_data(type='days')

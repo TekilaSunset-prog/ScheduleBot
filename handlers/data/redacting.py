@@ -88,30 +88,34 @@ async def sp_(callback: aiogram.types.CallbackQuery):
 
 
 # Редактирование данных
-@router_out.callback_query(lambda x: 'redact' in x.data)
-async def redact(callback: aiogram.types.CallbackQuery):
-    data = ScheduleDb.get_data(where=f'user_id = {callback.message.chat.id} and count = {callback.data[6]}', select='name, days, time, type, text', al=False)
-    await callback.message.edit_text('Какой параметр вы хотите отредактировать?', reply_markup=add_button_redact(data, callback.data[6]))
+@router_out.callback_query(lambda x: 'redact' in x.data or 'backred' in x.data)
+async def redact(callback: aiogram.types.CallbackQuery, state: FSMContext):
+    await state.update_data(count=callback.data[6])
+    data = ScheduleDb.get_data(where=f'user_id = {callback.message.chat.id} and count = {callback.data[6]}', select='name, days, time, type, text_', al=False)
+    await callback.message.edit_text('Какой параметр заметки вы хотите изменить?', reply_markup=add_button_redact(data, callback.data[6]))
 
 
 @router_out.callback_query(lambda x: 'name' in x.data)
 async def redact_name(callback: aiogram.types.CallbackQuery, state: FSMContext):
     data = callback.data.replace('name', '')
-    await callback.message.delete()
     await state.set_state(Redact.red_name)
-    await callback.message.answer('Введите новое название', reply_markup=add_button_cancel(data[0], 'red'))
+    await callback.message.edit_text('Введите новое название', reply_markup=add_button_cancel(data[0], 'red'))
 
 
 @router_out.message(Redact.red_name, aiogram.F.content_type == aiogram.types.ContentType.TEXT)
 async def redact_name1(message: aiogram.types.Message, state: FSMContext):
-    ScheduleDb.update_db(f'text_ = {message.text}', f'user_id = {message.from_user.id} and count = ')
+    count = await state.get_value('count')
+    check = ScheduleDb.update_db(f'name = "{message.text}"', f'user_id = {message.from_user.id} and count = {count}')
+    if check:
+        await message.answer('Успешно✔️', reply_markup=add_button_redact(back_=True))
+    else:
+        await message.answer(f'Неизвестная ошибка{emojize(":prohibited:")}')
 
 
 # Удаление данных
 @router_out.callback_query(lambda x: 'del' in x.data)
 async def delete(callback: aiogram.types.CallbackQuery):
-    await callback.message.delete()
-    await callback.message.answer('Вы уверены?', reply_markup=add_button_sure(callback.data[3]))
+    await callback.message.edit_text('Вы уверены?', reply_markup=add_button_sure(callback.data[3]))
 
 
 @router_out.callback_query(lambda x: 'yes' in x.data or 'no' in x.data)
@@ -123,17 +127,19 @@ async def sure(callback: aiogram.types.CallbackQuery):
         await callback.message.answer('Отмена⛔', reply_markup=add_button_output(count, back_=True))
     else:
         count = callback.data[3]
-        ScheduleDb.delete(f'user_id = {user_id} and count = {count}')
-
-        data = ScheduleDb.get_data(f'user_id = {user_id} and count > {count}', select='count')
-        if data:
-            for element in data:
-                ScheduleDb.update_db(f'count = {element[0] - 1}', f'user_id = {user_id} and count = {element[0]}')
-                UsersDb.update_db(f'count = count - 1', f'user_id = {user_id}')
+        check = ScheduleDb.delete(f'user_id = {user_id} and count = {count}')
+        if check:
+            await callback.message.answer(f'Неизвестная ошибка{emojize(":prohibited:")}')
         else:
-            UsersDb.update_db(f'count = count - 1', f'user_id = {user_id}')
+            data = ScheduleDb.get_data(f'user_id = {user_id} and count > {count}', select='count')
+            if data:
+                for element in data:
+                    ScheduleDb.update_db(f'count = {element[0] - 1}', f'user_id = {user_id} and count = {element[0]}')
+                    UsersDb.update_db(f'count = count - 1', f'user_id = {user_id}')
+            else:
+                UsersDb.update_db(f'count = count - 1', f'user_id = {user_id}')
 
-        await callback.message.answer('Успешно✔️', reply_markup=add_button_output(count, back_=True))
+            await callback.message.answer('Успешно✔️', reply_markup=add_button_output(count, back_=True))
 
 
 @router_out.callback_query(lambda x: x.data == 'create')

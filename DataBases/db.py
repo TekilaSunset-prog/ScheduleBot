@@ -8,15 +8,17 @@ class DB:
         self.table = table
         self.count = count
 
-    def create(self, data):
+    def create(self, data, count=1):
         with self.conn:
-            self.cur.execute(f'CREATE TABLE if not exists {self.table} {data}')
+            resp = self.cur.execute(f'CREATE TABLE if not exists {self.table} {data}').rowcount
+            return resp == count
 
 
-    def add_data(self, data, queue=''):
+    def add_data(self, data, queue='', count=0):
         with self.conn:
             c = ("?," * self.count)[::-1].replace(',', '', 1)
-            self.cur.execute(f'insert into {self.table} {queue} values({c})', data)
+            resp = self.cur.execute(f'insert into {self.table} {queue} values({c})', data)
+            return resp == count
 
 
     def get_data(self, where, select='*', al=True):
@@ -30,14 +32,15 @@ class DB:
             return data
 
 
-    def update_db(self, upd, where):
+    def update_db(self, upd, where, count=1):
         with self.conn:
-            self.cur.execute(f'Update {self.table} set {upd} where {where}')
+            resp = self.cur.execute(f'Update {self.table} set {upd} where {where}').rowcount
+            return resp == count
 
-
-    def delete(self, data):
+    def delete(self, data, count=1):
         with self.conn:
-            self.cur.execute(f'Delete from {self.table} where {data}')
+            resp = self.cur.execute(f'Delete from {self.table} where {data}')
+            return resp == count
 
 
     def commit(self):
